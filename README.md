@@ -18,3 +18,6 @@
 Имеется возможность применить декоратор к базовой версии и получить данные в формате JSON (class ConcreteDecoratorJSON).
 
 Имеется возможность использовать декоратор к базовой версии (CurrenciesList) или к другому декоратору (ConcreteDecoratorJSON) и получить данные в формате CSV (class ConcreteDecoratorCSV).
+
+Результат работы программы:
+![image3](images/lr6.png)
