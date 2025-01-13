@@ -152,81 +152,54 @@ class CurrencyRates(metaclass=SingletonMeta):
             print(f"Ошибка при сохранении файла: {e}")
 
 
-class CurrenciesList:
-    def __init__(self, currency_rates):
-        self.currency_rates = currency_rates
+class CurrencyDecorator:
+    def __init__(self, currencies_list):
+        self._currencies_list = currencies_list
 
-    def get_currencies(self):
-        """Получить данные о валютах в виде словаря"""
-        return self.currency_rates.get_all_currencies()
-
-
-class Decorator(ABC):
-    """Абстрактный базовый декоратор"""
-    def __init__(self, component):
-        self._component = component
-
-    @abstractmethod
-    def get_currencies(self):
-        pass
+    def get_currencies(self, currencies_ids_lst):
+        return self._currencies_list.get_particular_currency(currencies_ids_lst)
 
 
-class ConcreteDecoratorJSON(Decorator):
-    """Декоратор, преобразующий данные в формат JSON"""
-    def get_currencies(self):
-        data = self._component.get_currencies()
-        try:
-            return json.dumps(data, ensure_ascii=False, indent=4)
-        except Exception as e:
-            print(f"Ошибка преобразования в JSON: {e}")
-            return None
+class ConcreteDecoratorJSON(CurrencyDecorator):
+    def get_currencies(self, currencies_ids_lst):
+        data = super().get_currencies(currencies_ids_lst)
+        return json.dumps(data, ensure_ascii=False, indent=1)
 
 
-class ConcreteDecoratorCSV(Decorator):
-    """Декоратор, преобразующий данные в формат CSV"""
-    def get_currencies(self):
-        data = self._component.get_currencies()
+class ConcreteDecoratorCSV(CurrencyDecorator):
+    def __init__(self, currencies_list):
+        self._currencies_list = currencies_list
 
-        try:
-            csv_output = []
-            for currency in data:
-                for code, (name, rate) in currency.items():
-                    csv_output.append([code, name, rate])
+    def get_currencies(self, currencies_ids_lst):
+        currencies = self._currencies_list.get_particular_currency(currencies_ids_lst)
 
-            output = ""
-            writer = csv.writer(output := [])
-            writer.writerow(["Code", "Name", "Rate"])
-            writer.writerows(csv_output)
-
-            return "\n".join(output)
-        except Exception as e:
-            print(f"Ошибка преобразования в CSV: {e}")
-            return None
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['CharCode', 'Name', 'Value'])  # Заголовки
+        for currency in currencies:
+            charcode = list(currency.keys())[0]
+            name, value = currency[charcode]
+            writer.writerow([charcode, name, value])
+        return output.getvalue()
 
 
-# Пример использования
-if __name__ == "__main__":
-    # Создаем объект для работы с курсами валют
-    rates = CurrencyRates()
+currencies_list = CurrencyRates()
+try:
+    result = currencies_list.get_particular_currency(['R01770', 'R01335', 'R01090B'])
+    print("Базовое представление данных:")
+    print(result)
 
-    # Базовый класс для получения словаря
-    base_component = CurrenciesList(rates)
+    time.sleep(5)
+    # Декоратор для JSON
+    json_currencies = ConcreteDecoratorJSON(currencies_list)
+    print("\nДанные в формате JSON:")
+    print(json_currencies.get_currencies(['R01770', 'R01335', 'R01090B']))
 
-    # Получение данных в базовом формате (словарь)
-    print("--- Базовые данные ---")
-    print(base_component.get_currencies())
+    time.sleep(5)
+    # Декоратор для CSV
+    csv_currencies = ConcreteDecoratorCSV(currencies_list)
+    print("\nДанные в формате CSV:")
+    print(csv_currencies.get_currencies(['R01770', 'R01335', 'R01090B']))
 
-    # Декорируем базовый класс для преобразования в JSON
-    json_decorator = ConcreteDecoratorJSON(base_component)
-    print("\n--- Данные в формате JSON ---")
-    print(json_decorator.get_currencies())
-
-    # Декорируем JSON-декоратор для преобразования в CSV
-    csv_decorator = ConcreteDecoratorCSV(json_decorator)
-    print("\n--- Данные в формате CSV ---")
-    print(csv_decorator.get_currencies())
-
-    # Также можно декорировать базовый класс напрямую для CSV
-    csv_decorator_direct = ConcreteDecoratorCSV(base_component)
-    print("\n--- Данные в формате CSV (без JSON-декоратора) ---")
-    print(csv_decorator_direct.get_currencies())
+except Exception as e:
+    print(e)
